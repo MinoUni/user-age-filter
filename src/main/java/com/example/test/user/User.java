@@ -20,7 +20,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Entity
 @Table(name = "users")
-public class User {
+class User {
 
   @Id
   @GeneratedValue(strategy = GenerationType.SEQUENCE)
