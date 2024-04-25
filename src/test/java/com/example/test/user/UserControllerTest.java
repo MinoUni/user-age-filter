@@ -9,12 +9,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpHeaders.LOCATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.test.exception.UserNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
@@ -80,5 +82,44 @@ class UserControllerTest {
             jsonPath("$.validationErrors[?(@.propertyName == \"birthDate\" && @.message == \"Date must be earlier than current date\")]").exists());
 
     verify(userService, never()).create(any(NewUserDTO.class));
+  }
+
+  @Test
+  @DisplayName("when delete non-existing user then return 404 status")
+  void whenDeleteNonExistingUserThenResponseWithStatusCode404() throws Exception {
+    final int userId = 3;
+
+    when(userService.delete(eq(userId)))
+            .thenThrow(new UserNotFoundException(String.format("User with id <%d> not found", userId)));
+
+    mockMvc
+        .perform(delete("/users/{id}", userId).contentType(APPLICATION_JSON))
+        .andExpectAll(
+            status().isNotFound(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.timestamp").exists(),
+            jsonPath("$.statusCode").value(404),
+            jsonPath("$.errorMessage").value(String.format("User with id <%d> not found", userId)),
+            jsonPath("$.validationErrors").doesNotExist());
+
+    verify(userService, times(1)).delete(eq(userId));
+  }
+
+  @Test
+  @DisplayName("when delete existing user then return 200 status")
+  void whenDeleteExistingUserThenResponseWithStatusCode200() throws Exception {
+    final int userId = 1;
+
+    when(userService.delete(eq(userId))).thenReturn(userId);
+
+    mockMvc
+        .perform(delete("/users/{id}", userId).contentType(APPLICATION_JSON))
+        .andExpectAll(
+            status().isOk(),
+            content().contentType(APPLICATION_JSON),
+            content().string(String.format("User with id <%d> was deleted", userId))
+        );
+
+    verify(userService, times(1)).delete(eq(userId));
   }
 }

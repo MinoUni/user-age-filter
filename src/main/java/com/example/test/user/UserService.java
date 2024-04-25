@@ -2,6 +2,8 @@ package com.example.test.user;
 
 import com.example.test.exception.InvalidUserAgeException;
 import java.time.LocalDate;
+
+import com.example.test.exception.UserNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,14 @@ class UserService {
             .phoneNumber(details.phoneNumber())
             .build();
     User user = userRepository.save(newUser);
+    return user.getId();
+  }
+
+  @Transactional
+  public Integer delete(Integer id) {
+    var user = userRepository.findById(id)
+            .orElseThrow(() -> new UserNotFoundException(String.format("User with id <%d> not found", id)));
+    userRepository.delete(user);
     return user.getId();
   }
 }

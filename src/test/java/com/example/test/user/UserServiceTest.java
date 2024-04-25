@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -11,7 +13,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.test.exception.InvalidUserAgeException;
+import com.example.test.exception.UserNotFoundException;
 import java.time.LocalDate;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,5 +53,37 @@ class UserServiceTest {
     assertEquals(1, userId);
 
     verify(userRepository, times(1)).save(any(User.class));
+  }
+
+  @Test
+  @DisplayName("when delete non-existing user then return 404 status")
+  void whenDeleteNonExistingUserThenResponseWithStatusCode404() {
+    final int userId = 1;
+    final String message = String.format("User with id <%d> not found", userId);
+    
+    when(userRepository.findById(eq(userId)))
+            .thenThrow(new UserNotFoundException(message));
+    
+    var errorMessage = assertThrows(UserNotFoundException.class, () -> userService.delete(userId));
+    assertEquals(message, errorMessage.getMessage());
+    
+    verify(userRepository, times(1)).findById(eq(userId));
+    verify(userRepository, never()).delete(any(User.class));
+  }
+
+  @Test
+  @DisplayName("when delete existing user then return 200 status")
+  void whenDeleteExistingUserThenResponseWithStatusCode200() {
+    final int userId = 1;
+    User user = User.builder().id(userId).build();
+
+    when(userRepository.findById(eq(userId))).thenReturn(Optional.of(user));
+    doNothing().when(userRepository).delete(eq(user));
+    
+    var deletedUserId = assertDoesNotThrow(() -> userService.delete(userId));
+    assertEquals(userId, deletedUserId);
+
+    verify(userRepository, times(1)).findById(eq(userId));
+    verify(userRepository, times(1)).delete(eq(user));
   }
 }

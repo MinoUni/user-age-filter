@@ -1,6 +1,7 @@
 package com.example.test.user;
 
 import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
@@ -9,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,5 +32,13 @@ class UserController {
         .header(HttpHeaders.LOCATION, String.format("%s/%d", request.getRequestURI(), userId))
         .contentType(APPLICATION_JSON)
         .build();
+  }
+
+  @DeleteMapping(value = "/{id}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
+  public ResponseEntity<String> delete(@PathVariable Integer id) {
+    Integer userId = userService.delete(id);
+    return ResponseEntity.status(OK)
+            .contentType(APPLICATION_JSON)
+            .body(String.format("User with id <%d> was deleted", userId));
   }
 }

@@ -1,10 +1,11 @@
 package com.example.test.exception;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -22,22 +23,26 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
       @NonNull HttpHeaders headers,
       @NonNull HttpStatusCode status,
       @NonNull WebRequest request) {
-    var validationErrors = e.getBindingResult()
-            .getFieldErrors()
-            .stream()
+    var validationErrors =
+        e.getBindingResult().getFieldErrors().stream()
             .map(error -> new ValidationErrorDTO(error.getField(), error.getDefaultMessage()))
             .toList();
     var errorDTO = new ErrorDTO(status.value(), "Validation failed");
     errorDTO.setValidationErrors(validationErrors);
-    return ResponseEntity.status(status)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(errorDTO);
+    return ResponseEntity.status(status).contentType(APPLICATION_JSON).body(errorDTO);
   }
 
   @ExceptionHandler(InvalidUserAgeException.class)
   public ResponseEntity<ErrorDTO> handleInvalidUserAgeException(InvalidUserAgeException e) {
     return ResponseEntity.status(BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
+        .contentType(APPLICATION_JSON)
         .body(new ErrorDTO(BAD_REQUEST.value(), e.getMessage()));
+  }
+
+  @ExceptionHandler(UserNotFoundException.class)
+  public ResponseEntity<ErrorDTO> handleUserNotFoundException(UserNotFoundException e) {
+    return ResponseEntity.status(NOT_FOUND)
+        .contentType(APPLICATION_JSON)
+        .body(new ErrorDTO(NOT_FOUND.value(), e.getMessage()));
   }
 }

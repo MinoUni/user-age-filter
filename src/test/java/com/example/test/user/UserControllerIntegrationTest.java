@@ -3,6 +3,7 @@ package com.example.test.user;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.http.HttpHeaders.LOCATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -64,5 +65,33 @@ class UserControllerIntegrationTest {
             jsonPath("$.validationErrors[?(@.propertyName == \"email\" && @.message == \"Invalid email format\")]").exists(),
             jsonPath("$.validationErrors[?(@.propertyName == \"firstName\" && @.message == \"First name can't be blank\")]").exists(),
             jsonPath("$.validationErrors[?(@.propertyName == \"birthDate\" && @.message == \"Date must be earlier than current date\")]").exists());
+  }
+
+  @Test
+  @DisplayName("when delete non-existing user then return 404 status")
+  void whenDeleteNonExistingUserThenResponseWithStatusCode404() throws Exception {
+    final int userId = 3;
+    mockMvc
+        .perform(delete("/users/{id}", userId).contentType(APPLICATION_JSON))
+        .andExpectAll(
+            status().isNotFound(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.timestamp").exists(),
+            jsonPath("$.statusCode").value(404),
+            jsonPath("$.errorMessage").value(String.format("User with id <%d> not found", userId)),
+            jsonPath("$.validationErrors").doesNotExist());
+  }
+
+  @Test
+  @DisplayName("when delete existing user then return 200 status")
+  void whenDeleteExistingUserThenResponseWithStatusCode200() throws Exception {
+    final int userId = 1;
+    mockMvc
+      .perform(delete("/users/{id}", userId).contentType(APPLICATION_JSON))
+      .andExpectAll(
+          status().isOk(),
+          content().contentType(APPLICATION_JSON),
+          content().string(String.format("User with id <%d> was deleted", userId))
+      );
   }
 }
