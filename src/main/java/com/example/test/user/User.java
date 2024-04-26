@@ -23,8 +23,7 @@ import lombok.Setter;
 class User {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.SEQUENCE)
-  @Column(name = "id", nullable = false)
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Integer id;
 
   @Column(unique = true, nullable = false)
@@ -36,8 +35,8 @@ class User {
   @Column(name = "last_name", nullable = false)
   private String lastName;
 
-  @Column(name = "birth_day")
-  private LocalDate birthDay;
+  @Column(name = "birth_date")
+  private LocalDate birthDate;
 
   private String address;
 

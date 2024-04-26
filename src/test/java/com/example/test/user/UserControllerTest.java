@@ -3,6 +3,7 @@ package com.example.test.user;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -11,6 +12,7 @@ import static org.springframework.http.HttpHeaders.LOCATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,6 +22,7 @@ import com.example.test.exception.UserNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -39,6 +42,7 @@ class UserControllerTest {
   private UserService userService;
 
   @Test
+  @Order(1)
   @DisplayName("when create user with proper data then send 201 status")
   void whenCreateUserWithProperDataThenResponseWithStatusCode201() throws Exception {
     final String requestURI = "/users";
@@ -59,11 +63,12 @@ class UserControllerTest {
   }
 
   @Test
+  @Order(1)
   @DisplayName("when create user with invalid data then send 400 status")
   void whenCreateUserWithInvalidDataThenResponseWithStatusCode400() throws Exception {
     final String requestURI = "/users";
     NewUserDTO userData = new NewUserDTO("test.12gmailcom", null, "  ",
-            LocalDate.of(2024, 4, 25), null, null);
+            LocalDate.now(), null, null);
     String content = objectMapper.writeValueAsString(userData);
 
     mockMvc
@@ -85,6 +90,7 @@ class UserControllerTest {
   }
 
   @Test
+  @Order(3)
   @DisplayName("when delete non-existing user then return 404 status")
   void whenDeleteNonExistingUserThenResponseWithStatusCode404() throws Exception {
     final int userId = 3;
@@ -106,6 +112,7 @@ class UserControllerTest {
   }
 
   @Test
+  @Order(3)
   @DisplayName("when delete existing user then return 200 status")
   void whenDeleteExistingUserThenResponseWithStatusCode200() throws Exception {
     final int userId = 1;
@@ -121,5 +128,60 @@ class UserControllerTest {
         );
 
     verify(userService, times(1)).delete(eq(userId));
+  }
+
+  @Test
+  @Order(2)
+  @DisplayName("when full update user with all details then return 200 status")
+  void whenFullFullUpdateUserWithAllDetailsThenResponseWithStatusCode200() throws Exception {
+    final int userId = 1;
+    UserFullUpdate details = new UserFullUpdate("mark.jovar@gmail.com", "Mark", "Jovar",
+            LocalDate.of(2004, 4, 25), "address", "phone");
+    String content = objectMapper.writeValueAsString(details);
+
+    doNothing().when(userService).fullUpdate(userId, details);
+
+    mockMvc
+        .perform(put("/users/{id}", userId)
+            .contentType(APPLICATION_JSON)
+            .content(content))
+        .andExpectAll(
+            status().isOk(),
+            content().contentType(APPLICATION_JSON));
+
+    verify(userService, times(1)).fullUpdate(eq(userId), eq(details));
+  }
+
+  @Test
+  @Order(2)
+  @DisplayName("when full update user with non all details then return 400 status")
+  void whenFullUpdateUserWithNotAllDetailsThenResponseWithStatusCode400() throws Exception {
+    final int userId = 1;
+    UserFullUpdate details = new UserFullUpdate(null, null, null,
+            null, null, null);
+    String content = objectMapper.writeValueAsString(details);
+
+    doNothing().when(userService).fullUpdate(userId, details);
+
+    mockMvc
+        .perform(put("/users/{id}", userId)
+            .contentType(APPLICATION_JSON)
+            .content(content))
+        .andExpectAll(
+            status().isBadRequest(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.timestamp").exists(),
+            jsonPath("$.statusCode").value(400),
+            jsonPath("$.errorMessage").isNotEmpty(),
+            jsonPath("$.validationErrors").isArray(),
+            jsonPath("$.validationErrors", hasSize(6)),
+            jsonPath("$.validationErrors[?(@.propertyName == \"lastName\" && @.message == \"Property can't be blank\")]").exists(),
+            jsonPath("$.validationErrors[?(@.propertyName == \"email\" && @.message == \"Property can't be blank\")]").exists(),
+            jsonPath("$.validationErrors[?(@.propertyName == \"firstName\" && @.message == \"Property can't be blank\")]").exists(),
+            jsonPath("$.validationErrors[?(@.propertyName == \"address\" && @.message == \"Property can't be blank\")]").exists(),
+            jsonPath("$.validationErrors[?(@.propertyName == \"phoneNumber\" && @.message == \"Property can't be blank\")]").exists(),
+            jsonPath("$.validationErrors[?(@.propertyName == \"birthDate\" && @.message == \"Property is required\")]").exists());
+
+    verify(userService, never()).fullUpdate(eq(userId), eq(details));
   }
 }
