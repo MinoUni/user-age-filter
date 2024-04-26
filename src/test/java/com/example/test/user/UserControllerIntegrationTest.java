@@ -1,9 +1,11 @@
 package com.example.test.user;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.http.HttpHeaders.LOCATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -14,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -171,7 +174,7 @@ class UserControllerIntegrationTest {
   @Order(8)
   @DisplayName("when delete non-existing user then return 404 status")
   void whenDeleteNonExistingUserThenResponseWithStatusCode404() throws Exception {
-    final int userId = 3;
+    final int userId = 999;
     mockMvc
         .perform(delete("/users/{id}", userId).contentType(APPLICATION_JSON))
         .andExpectAll(
@@ -223,7 +226,8 @@ class UserControllerIntegrationTest {
       throws Exception {
     final int userId = 1;
     String exceptionMessage = String.format("User age less than %d", 18);
-    UserPartialUpdateDTO details = new UserPartialUpdateDTO(null, null, null, LocalDate.now(), null, null);
+    UserPartialUpdateDTO details =
+        new UserPartialUpdateDTO(null, null, null, LocalDate.now(), null, null);
     String content = objectMapper.writeValueAsString(details);
 
     mockMvc
@@ -235,5 +239,60 @@ class UserControllerIntegrationTest {
             jsonPath("$.statusCode").value(400),
             jsonPath("$.errorMessage").value(exceptionMessage),
             jsonPath("$.validationErrors").doesNotExist());
+  }
+
+  @Test
+  @DisplayName("when find all users with proper dates then return list of users and 200 status")
+  void whenFindAllUsersWithValidDatesThenResponseWithListOfUsersAndStatusCode200()
+      throws Exception {
+    final LocalDate from = LocalDate.of(2000, 1, 1);
+    final LocalDate to = LocalDate.of(2003, 1, 1);
+    final DateTimeFormatter pattern = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+    mockMvc
+        .perform(get("/users").param("from", from.format(pattern)).param("to", to.format(pattern)))
+        .andExpectAll(
+            status().isOk(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$").exists(),
+            jsonPath("$").isArray());
+  }
+
+  @Test
+  @DisplayName("when find all users with dateFrom after dateTo then return 400 status")
+  void whenFindAllUsersWithDateFromAfterDateToThenResponseWithStatusCode400() throws Exception {
+    final LocalDate from = LocalDate.of(2005, 1, 1);
+    final LocalDate to = LocalDate.of(2000, 1, 1);
+    final String exceptionMessage = "DateFrom can't be after to dateTo";
+    final DateTimeFormatter pattern = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+    mockMvc
+        .perform(get("/users").param("from", from.format(pattern)).param("to", to.format(pattern)))
+        .andExpectAll(
+            status().isBadRequest(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.timestamp").exists(),
+            jsonPath("$.statusCode").value(400),
+            jsonPath("$.errorMessage").value(exceptionMessage),
+            jsonPath("$.validationErrors").doesNotExist());
+  }
+
+  @Test
+  @DisplayName("when find all users with invalid dates then return 400 status")
+  void whenFindAllUsersWithInvalidClientRequestDataThenResponseWithStatusCode400()
+      throws Exception {
+    final LocalDate from = LocalDate.of(2025, 1, 1);
+    final LocalDate to = LocalDate.of(2025, 1, 1);
+    final DateTimeFormatter pattern = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+    mockMvc
+        .perform(get("/users").param("from", from.format(pattern)).param("to", to.format(pattern)))
+        .andExpectAll(
+            status().isBadRequest(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.errors").exists(),
+            jsonPath("$.errors").isArray(),
+            jsonPath("$.errors", hasItem("DateTo can't be in future")),
+            jsonPath("$.errors", hasItem("DateFrom can't be in future")));
   }
 }

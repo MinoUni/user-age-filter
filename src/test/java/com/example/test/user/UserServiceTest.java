@@ -3,6 +3,7 @@ package com.example.test.user;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -13,9 +14,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.test.exception.InvalidDateRangeException;
 import com.example.test.exception.InvalidUserAgeException;
 import com.example.test.exception.UserNotFoundException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -170,7 +173,8 @@ class UserServiceTest {
   }
 
   @Test
-  @DisplayName("when partial update user with age less than age constraint then throw InvalidUserAgeException")
+  @DisplayName(
+      "when partial update user with age less than age constraint then throw InvalidUserAgeException")
   void whenPartialUpdateUserWithAgeLessThanAgeConstraintThenThrowInvalidUserAgeException() {
     final int userId = 1;
     final String exceptionMessage = String.format("User age less than %d", AGE_CONSTRAINT);
@@ -243,5 +247,38 @@ class UserServiceTest {
 
     verify(userRepository, times(1)).findById(eq(userId));
     verify(userRepository, times(1)).save(eq(user));
+  }
+
+  @Test
+  @DisplayName("when find all users with proper dates then return list of users")
+  void whenFindAllUsersWithValidDatesThenReturnUsersList() {
+    final LocalDate from = LocalDate.of(2000, 1, 1);
+    final LocalDate to = LocalDate.of(2003, 1, 1);
+
+    when(userRepository.findAllByBirthDateBetween(eq(from), eq(to))).thenReturn(List.of());
+
+    List<UserDetailsDTO> users =
+        assertDoesNotThrow(() -> userService.getAllByDateBetween(from, to));
+
+    assertNotNull(users);
+
+    verify(userRepository, times(1)).findAllByBirthDateBetween(eq(from), eq(to));
+  }
+
+  @Test
+  @DisplayName(
+      "when find all users with dateFrom after dateTo then throw InvalidDateRangeException")
+  void whenFindAllUsersWithInvalidDateRangeThanThrowInvalidDateRangeException() {
+    final LocalDate from = LocalDate.of(2005, 1, 1);
+    final LocalDate to = LocalDate.of(2003, 1, 1);
+    final String exceptionMessage = "DateFrom can't be after to dateTo";
+
+    var errorMessage =
+        assertThrows(
+            InvalidDateRangeException.class, () -> userService.getAllByDateBetween(from, to));
+
+    assertEquals(exceptionMessage, errorMessage.getMessage());
+
+    verify(userRepository, never()).findAllByBirthDateBetween(eq(from), eq(to));
   }
 }

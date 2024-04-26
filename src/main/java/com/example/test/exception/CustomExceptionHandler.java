@@ -4,6 +4,8 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import java.util.Map;
 
 @RestControllerAdvice
 public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
@@ -30,6 +34,22 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
     var errorDTO = new ErrorDTO(status.value(), "Validation failed");
     errorDTO.setValidationErrors(validationErrors);
     return ResponseEntity.status(status).contentType(APPLICATION_JSON).body(errorDTO);
+  }
+
+  @ExceptionHandler(ConstraintViolationException.class)
+  public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException e) {
+    var constraintViolations =
+        e.getConstraintViolations().stream().map(ConstraintViolation::getMessage).toList();
+    return ResponseEntity.status(BAD_REQUEST)
+        .contentType(APPLICATION_JSON)
+        .body(Map.of("errors", constraintViolations));
+  }
+
+  @ExceptionHandler(InvalidDateRangeException.class)
+  public ResponseEntity<ErrorDTO> handleInvalidDateRangeException(InvalidDateRangeException e) {
+    return ResponseEntity.status(BAD_REQUEST)
+            .contentType(APPLICATION_JSON)
+            .body(new ErrorDTO(BAD_REQUEST.value(), e.getMessage()));
   }
 
   @ExceptionHandler(InvalidUserAgeException.class)

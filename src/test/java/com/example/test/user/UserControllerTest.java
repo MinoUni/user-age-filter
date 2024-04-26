@@ -1,21 +1,34 @@
 package com.example.test.user;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpHeaders.LOCATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.test.exception.InvalidDateRangeException;
 import com.example.test.exception.InvalidUserAgeException;
 import com.example.test.exception.UserNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -96,8 +109,7 @@ class UserControllerTest {
     final int userId = 3;
     String exceptionMessage = String.format("User with id <%d> not found", userId);
 
-    when(userService.delete(eq(userId)))
-        .thenThrow(new UserNotFoundException(exceptionMessage));
+    when(userService.delete(eq(userId))).thenThrow(new UserNotFoundException(exceptionMessage));
 
     mockMvc
         .perform(delete("/users/{id}", userId).contentType(APPLICATION_JSON))
@@ -237,7 +249,8 @@ class UserControllerTest {
   @Test
   @Order(9)
   @DisplayName("when partial update user with age less than age constraint then return 400 status")
-  void whenPartialUpdateUserWithAgeLessThanAgeConstraintThenResponseWithStatusCode400() throws Exception {
+  void whenPartialUpdateUserWithAgeLessThanAgeConstraintThenResponseWithStatusCode400()
+      throws Exception {
     final int userId = 1;
     String exceptionMessage = String.format("User age less than %d", 18);
     UserPartialUpdateDTO details = new UserPartialUpdateDTO(null, null, null, null, null, null);
@@ -248,15 +261,81 @@ class UserControllerTest {
         .partialUpdate(eq(userId), eq(details));
 
     mockMvc
-            .perform(patch("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
-            .andExpectAll(
-                    status().isBadRequest(),
-                    content().contentType(APPLICATION_JSON),
-                    jsonPath("$.timestamp").exists(),
-                    jsonPath("$.statusCode").value(400),
-                    jsonPath("$.errorMessage").value(exceptionMessage),
-                    jsonPath("$.validationErrors").doesNotExist());
+        .perform(patch("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
+        .andExpectAll(
+            status().isBadRequest(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.timestamp").exists(),
+            jsonPath("$.statusCode").value(400),
+            jsonPath("$.errorMessage").value(exceptionMessage),
+            jsonPath("$.validationErrors").doesNotExist());
 
     verify(userService, times(1)).partialUpdate(eq(userId), eq(details));
+  }
+
+  @Test
+  @DisplayName("when find all users with proper dates then return list of users and 200 status")
+  void whenFindAllUsersWithValidDatesThenResponseWithListOfUsersAndStatusCode200()
+      throws Exception {
+    final LocalDate from = LocalDate.of(2000, 1, 1);
+    final LocalDate to = LocalDate.of(2003, 1, 1);
+    final DateTimeFormatter pattern = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+    when(userService.getAllByDateBetween(eq(from), eq(to))).thenReturn(List.of());
+
+    mockMvc
+        .perform(get("/users").param("from", from.format(pattern)).param("to", to.format(pattern)))
+        .andExpectAll(
+            status().isOk(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$").exists(),
+            jsonPath("$").isArray());
+
+    verify(userService, times(1)).getAllByDateBetween(eq(from), eq(to));
+  }
+
+  @Test
+  @DisplayName("when find all users with dateFrom after dateTo then return 400 status")
+  void whenFindAllUsersWithDateFromAfterDateToThenResponseWithStatusCode400() throws Exception {
+    final LocalDate from = LocalDate.of(2005, 1, 1);
+    final LocalDate to = LocalDate.of(2000, 1, 1);
+    final String exceptionMessage = "DateFrom can't be after to dateTo";
+    final DateTimeFormatter pattern = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+    when(userService.getAllByDateBetween(eq(from), eq(to)))
+        .thenThrow(new InvalidDateRangeException(exceptionMessage));
+
+    mockMvc
+        .perform(get("/users").param("from", from.format(pattern)).param("to", to.format(pattern)))
+        .andExpectAll(
+            status().isBadRequest(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.timestamp").exists(),
+            jsonPath("$.statusCode").value(400),
+            jsonPath("$.errorMessage").value(exceptionMessage),
+            jsonPath("$.validationErrors").doesNotExist());
+
+    verify(userService, times(1)).getAllByDateBetween(eq(from), eq(to));
+  }
+
+  @Test
+  @DisplayName("when find all users with invalid dates then return 400 status")
+  void whenFindAllUsersWithInvalidClientRequestDataThenResponseWithStatusCode400()
+      throws Exception {
+    final LocalDate from = LocalDate.of(2025, 1, 1);
+    final LocalDate to = LocalDate.of(2025, 1, 1);
+    final DateTimeFormatter pattern = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+    mockMvc
+        .perform(get("/users").param("from", from.format(pattern)).param("to", to.format(pattern)))
+        .andExpectAll(
+            status().isBadRequest(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.errors").exists(),
+            jsonPath("$.errors").isArray(),
+            jsonPath("$.errors", hasItem("DateTo can't be in future")),
+            jsonPath("$.errors", hasItem("DateFrom can't be in future")));
+
+    verify(userService, never()).getAllByDateBetween(eq(from), eq(to));
   }
 }

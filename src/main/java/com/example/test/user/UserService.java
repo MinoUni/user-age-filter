@@ -1,8 +1,11 @@
 package com.example.test.user;
 
+import com.example.test.exception.InvalidDateRangeException;
 import com.example.test.exception.InvalidUserAgeException;
 import com.example.test.exception.UserNotFoundException;
 import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -20,6 +23,13 @@ class UserService {
       @Value("${application.age-constraint}") int ageConstraint) {
     this.userRepository = userRepository;
     this.ageConstraint = ageConstraint;
+  }
+
+  public List<UserDetailsDTO> getAllByDateBetween(LocalDate from, LocalDate to) {
+    if (from.isAfter(to)) {
+      throw new InvalidDateRangeException("DateFrom can't be after to dateTo");
+    }
+    return userRepository.findAllByBirthDateBetween(from, to);
   }
 
   @Transactional
