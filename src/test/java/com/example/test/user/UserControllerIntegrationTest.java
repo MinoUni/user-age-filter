@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.http.HttpHeaders.LOCATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -138,11 +139,11 @@ class UserControllerIntegrationTest {
   void whenDeleteExistingUserThenResponseWithStatusCode200() throws Exception {
     final int userId = 1;
     mockMvc
-            .perform(delete("/users/{id}", userId).contentType(APPLICATION_JSON))
-            .andExpectAll(
-                    status().isOk(),
-                    content().contentType(APPLICATION_JSON),
-                    content().string(String.format("User with id <%d> was deleted", userId)));
+        .perform(delete("/users/{id}", userId).contentType(APPLICATION_JSON))
+        .andExpectAll(
+            status().isOk(),
+            content().contentType(APPLICATION_JSON),
+            content().string(String.format("User with id <%d> was deleted", userId)));
   }
 
   @Test
@@ -179,6 +180,60 @@ class UserControllerIntegrationTest {
             jsonPath("$.timestamp").exists(),
             jsonPath("$.statusCode").value(404),
             jsonPath("$.errorMessage").value(String.format("User with id <%d> not found", userId)),
+            jsonPath("$.validationErrors").doesNotExist());
+  }
+
+  @Test
+  @Order(8)
+  @DisplayName("when partial update user then return 200 status")
+  void whenPartialUpdateUserThenResponseWithStatusCode200() throws Exception {
+    final int userId = 1;
+    UserPartialUpdateDTO details = new UserPartialUpdateDTO(null, null, null, null, null, null);
+    String content = objectMapper.writeValueAsString(details);
+
+    mockMvc
+        .perform(patch("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
+        .andExpectAll(status().isOk(), content().contentType(APPLICATION_JSON));
+  }
+
+  @Test
+  @Order(9)
+  @DisplayName("when partial update non-existing user then return 404 status")
+  void whenPartialUpdateNotExistingUserThenResponseWithStatusCode404() throws Exception {
+    final int userId = 999;
+    String exceptionMessage = String.format("User with id <%d> not found", userId);
+    UserPartialUpdateDTO details = new UserPartialUpdateDTO(null, null, null, null, null, null);
+    String content = objectMapper.writeValueAsString(details);
+
+    mockMvc
+        .perform(patch("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
+        .andExpectAll(
+            status().isNotFound(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.timestamp").exists(),
+            jsonPath("$.statusCode").value(404),
+            jsonPath("$.errorMessage").value(exceptionMessage),
+            jsonPath("$.validationErrors").doesNotExist());
+  }
+
+  @Test
+  @Order(9)
+  @DisplayName("when partial update user with age less than age constraint then return 400 status")
+  void whenPartialUpdateUserWithAgeLessThanAgeConstraintThenResponseWithStatusCode400()
+      throws Exception {
+    final int userId = 1;
+    String exceptionMessage = String.format("User age less than %d", 18);
+    UserPartialUpdateDTO details = new UserPartialUpdateDTO(null, null, null, LocalDate.now(), null, null);
+    String content = objectMapper.writeValueAsString(details);
+
+    mockMvc
+        .perform(patch("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
+        .andExpectAll(
+            status().isBadRequest(),
+            content().contentType(APPLICATION_JSON),
+            jsonPath("$.timestamp").exists(),
+            jsonPath("$.statusCode").value(400),
+            jsonPath("$.errorMessage").value(exceptionMessage),
             jsonPath("$.validationErrors").doesNotExist());
   }
 }

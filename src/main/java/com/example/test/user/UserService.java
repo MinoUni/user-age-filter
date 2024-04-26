@@ -15,7 +15,9 @@ class UserService {
   private final UserRepository userRepository;
   private final int ageConstraint;
 
-  public UserService(UserRepository userRepository, @Value("${application.age-constraint}") int ageConstraint) {
+  public UserService(
+      UserRepository userRepository,
+      @Value("${application.age-constraint}") int ageConstraint) {
     this.userRepository = userRepository;
     this.ageConstraint = ageConstraint;
   }
@@ -56,6 +58,32 @@ class UserService {
     userRepository.save(user);
   }
 
+  @Transactional(isolation = Isolation.REPEATABLE_READ)
+  public void partialUpdate(Integer id, UserPartialUpdateDTO details) {
+    var user = getUser(id);
+    // Boilerplate code can be replaced with mapstruct or reflection
+    if (details.birthDate() != null) {
+      verifyAge(details.birthDate());
+      user.setBirthDate(details.birthDate());
+    }
+    if (details.email() != null && !details.email().isBlank()) {
+      user.setEmail(details.email());
+    }
+    if (details.firstName() != null && !details.firstName().isBlank()) {
+      user.setFirstName(details.firstName());
+    }
+    if (details.lastName() != null && !details.lastName().isBlank()) {
+      user.setLastName(details.lastName());
+    }
+    if (details.address() != null && !details.address().isBlank()) {
+      user.setAddress(details.address());
+    }
+    if (details.phoneNumber() != null && !details.phoneNumber().isBlank()) {
+      user.setPhoneNumber(details.phoneNumber());
+    }
+    userRepository.save(user);
+  }
+
   private void verifyAge(LocalDate birthDate) {
     int age = LocalDate.now().getYear() - birthDate.getYear();
     if (age < ageConstraint) {
@@ -64,7 +92,9 @@ class UserService {
   }
 
   private User getUser(Integer id) {
-    return userRepository.findById(id)
-            .orElseThrow(() -> new UserNotFoundException(String.format("User with id <%d> not found", id)));
+    return userRepository
+        .findById(id)
+        .orElseThrow(
+            () -> new UserNotFoundException(String.format("User with id <%d> not found", id)));
   }
 }
