@@ -136,7 +136,6 @@ class UserServiceTest {
             "phone number");
 
     when(userRepository.findById(eq(userId))).thenReturn(Optional.empty());
-    when(userRepository.save(any(User.class))).thenReturn(any(User.class));
 
     var errorMessage =
         assertThrows(UserNotFoundException.class, () -> userService.fullUpdate(userId, details));
@@ -157,9 +156,6 @@ class UserServiceTest {
     var details =
         new UserFullUpdate(
             "mark.jovar@gmail.com", "Mark", "Jovar", LocalDate.now(), "Adress", "phone number");
-
-    when(userRepository.findById(eq(userId))).thenReturn(Optional.of(user));
-    when(userRepository.save(eq(user))).thenReturn(eq(user));
 
     var errorMessage =
         assertThrows(InvalidUserAgeException.class, () -> userService.fullUpdate(userId, details));
@@ -183,7 +179,6 @@ class UserServiceTest {
         new UserPartialUpdateDTO(null, "Mark", "Jovar", LocalDate.now(), null, null);
 
     when(userRepository.findById(eq(userId))).thenReturn(Optional.of(user));
-    when(userRepository.save(eq(user))).thenReturn(user);
 
     var errorMessage =
         assertThrows(
@@ -195,7 +190,7 @@ class UserServiceTest {
     assertNotEquals(user.getLastName(), details.lastName());
 
     verify(userRepository, times(1)).findById(eq(userId));
-    verify(userRepository, never()).save(eq(user));
+    verify(userRepository, never()).save(any(User.class));
   }
 
   @Test
@@ -203,23 +198,18 @@ class UserServiceTest {
   void whenPartialUpdateNotExistingUserThenThrowUserNotFoundException() {
     final int userId = 1;
     final String exceptionMessage = String.format("User with id <%d> not found", userId);
-    User user = User.builder().firstName("Dummy").lastName("Dumbster").build();
     UserPartialUpdateDTO details =
         new UserPartialUpdateDTO(null, "Mark", "Jovar", LocalDate.of(1950, 4, 10), null, null);
 
     when(userRepository.findById(eq(userId))).thenReturn(Optional.empty());
-    when(userRepository.save(eq(user))).thenReturn(user);
 
     var errorMessage =
         assertThrows(UserNotFoundException.class, () -> userService.partialUpdate(userId, details));
 
     assertEquals(exceptionMessage, errorMessage.getMessage());
 
-    assertNotEquals(user.getFirstName(), details.firstName());
-    assertNotEquals(user.getLastName(), details.lastName());
-
     verify(userRepository, times(1)).findById(eq(userId));
-    verify(userRepository, never()).save(eq(user));
+    verify(userRepository, never()).save(any(User.class));
   }
 
   @Test
