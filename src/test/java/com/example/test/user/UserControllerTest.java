@@ -2,7 +2,6 @@ package com.example.test.user;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -50,15 +49,14 @@ class UserControllerTest {
   @Order(1)
   @DisplayName("when create user with proper data then send 201 status")
   void whenCreateUserWithProperDataThenResponseWithStatusCode201() throws Exception {
-    final String requestURI = "/users";
-    NewUserDTO userData =
-        new NewUserDTO("test.12@gmail.com", "Mark", "Jovar", LocalDate.of(2000, 4, 20), null, null);
+    var userData =
+        new UserDTO("test.12@gmail.com", "Mark", "Jovar", LocalDate.of(2000, 4, 20), null, null);
     String content = objectMapper.writeValueAsString(userData);
 
     when(userService.create(eq(userData))).thenReturn(1);
 
     mockMvc
-        .perform(post(requestURI).contentType(APPLICATION_JSON).content(content))
+        .perform(post("/users").contentType(APPLICATION_JSON).content(content))
         .andExpectAll(
             status().isCreated(),
             header().string(LOCATION, "/users/1"),
@@ -72,8 +70,7 @@ class UserControllerTest {
   @DisplayName("when create user with invalid data then send 400 status")
   void whenCreateUserWithInvalidDataThenResponseWithStatusCode400() throws Exception {
     final String requestURI = "/users";
-    NewUserDTO userData =
-        new NewUserDTO("test.12gmailcom", null, "  ", LocalDate.now(), null, null);
+    var userData = new UserDTO("test.12gmailcom", null, "  ", LocalDate.now(), null, null);
     String content = objectMapper.writeValueAsString(userData);
 
     mockMvc
@@ -87,19 +84,19 @@ class UserControllerTest {
             jsonPath("$.validationErrors").isArray(),
             jsonPath("$.validationErrors", hasSize(4)),
             jsonPath(
-                    "$.validationErrors[?(@.propertyName == \"lastName\" && @.message == \"Last name can't be blank\")]")
+                    "$.validationErrors[?(@.propertyName == \"lastName\" && @.message == \"Property can't be blank\")]")
                 .exists(),
             jsonPath(
                     "$.validationErrors[?(@.propertyName == \"email\" && @.message == \"Invalid email format\")]")
                 .exists(),
             jsonPath(
-                    "$.validationErrors[?(@.propertyName == \"firstName\" && @.message == \"First name can't be blank\")]")
+                    "$.validationErrors[?(@.propertyName == \"firstName\" && @.message == \"Property can't be blank\")]")
                 .exists(),
             jsonPath(
                     "$.validationErrors[?(@.propertyName == \"birthDate\" && @.message == \"Date must be earlier than current date\")]")
                 .exists());
 
-    verify(userService, never()).create(any(NewUserDTO.class));
+    verify(userService, never()).create(eq(userData));
   }
 
   @Test
@@ -147,18 +144,18 @@ class UserControllerTest {
   @DisplayName("when full update user with all details then return 200 status")
   void whenFullFullUpdateUserWithAllDetailsThenResponseWithStatusCode200() throws Exception {
     final int userId = 1;
-    UserFullUpdate details =
-        new UserFullUpdate(
+    var details =
+        new UserDTO(
             "mark.jovar@gmail.com", "Mark", "Jovar", LocalDate.of(2004, 4, 25), "address", "phone");
     String content = objectMapper.writeValueAsString(details);
 
-    doNothing().when(userService).fullUpdate(userId, details);
+    doNothing().when(userService).update(userId, details);
 
     mockMvc
         .perform(put("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
         .andExpectAll(status().isOk(), content().contentType(APPLICATION_JSON));
 
-    verify(userService, times(1)).fullUpdate(eq(userId), eq(details));
+    verify(userService, times(1)).update(eq(userId), eq(details));
   }
 
   @Test
@@ -166,10 +163,8 @@ class UserControllerTest {
   @DisplayName("when full update user with non all details then return 400 status")
   void whenFullUpdateUserWithNotAllDetailsThenResponseWithStatusCode400() throws Exception {
     final int userId = 1;
-    UserFullUpdate details = new UserFullUpdate(null, null, null, null, null, null);
+    var details = new UserDTO("", " ", null, null, null, null);
     String content = objectMapper.writeValueAsString(details);
-
-    doNothing().when(userService).fullUpdate(userId, details);
 
     mockMvc
         .perform(put("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
@@ -180,12 +175,15 @@ class UserControllerTest {
             jsonPath("$.statusCode").value(400),
             jsonPath("$.errorMessage").isNotEmpty(),
             jsonPath("$.validationErrors").isArray(),
-            jsonPath("$.validationErrors", hasSize(6)),
+            jsonPath("$.validationErrors", hasSize(7)),
             jsonPath(
                     "$.validationErrors[?(@.propertyName == \"lastName\" && @.message == \"Property can't be blank\")]")
                 .exists(),
             jsonPath(
                     "$.validationErrors[?(@.propertyName == \"email\" && @.message == \"Property can't be blank\")]")
+                .exists(),
+            jsonPath(
+                    "$.validationErrors[?(@.propertyName == \"email\" && @.message == \"Invalid email format\")]")
                 .exists(),
             jsonPath(
                     "$.validationErrors[?(@.propertyName == \"firstName\" && @.message == \"Property can't be blank\")]")
@@ -200,7 +198,7 @@ class UserControllerTest {
                     "$.validationErrors[?(@.propertyName == \"birthDate\" && @.message == \"Property is required\")]")
                 .exists());
 
-    verify(userService, never()).fullUpdate(eq(userId), eq(details));
+    verify(userService, never()).update(eq(userId), eq(details));
   }
 
   @Test
@@ -208,16 +206,16 @@ class UserControllerTest {
   @DisplayName("when partial update user then return 200 status")
   void whenPartialUpdateUserThenResponseWithStatusCode200() throws Exception {
     final int userId = 1;
-    UserPartialUpdateDTO details = new UserPartialUpdateDTO(null, null, null, null, null, null);
+    var details = new UserDTO(null, null, null, null, null, null);
     String content = objectMapper.writeValueAsString(details);
 
-    doNothing().when(userService).partialUpdate(eq(userId), eq(details));
+    doNothing().when(userService).update(eq(userId), eq(details));
 
     mockMvc
         .perform(patch("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
         .andExpectAll(status().isOk(), content().contentType(APPLICATION_JSON));
 
-    verify(userService, times(1)).partialUpdate(eq(userId), eq(details));
+    verify(userService, times(1)).update(eq(userId), eq(details));
   }
 
   @Test
@@ -226,12 +224,12 @@ class UserControllerTest {
   void whenPartialUpdateNotExistingUserThenResponseWithStatusCode404() throws Exception {
     final int userId = 1;
     String exceptionMessage = String.format("User with id <%d> not found", userId);
-    UserPartialUpdateDTO details = new UserPartialUpdateDTO(null, null, null, null, null, null);
+    var details = new UserDTO(null, null, null, null, null, null);
     String content = objectMapper.writeValueAsString(details);
 
     doThrow(new UserNotFoundException(exceptionMessage))
         .when(userService)
-        .partialUpdate(eq(userId), eq(details));
+        .update(eq(userId), eq(details));
 
     mockMvc
         .perform(patch("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
@@ -243,7 +241,7 @@ class UserControllerTest {
             jsonPath("$.errorMessage").value(exceptionMessage),
             jsonPath("$.validationErrors").doesNotExist());
 
-    verify(userService, times(1)).partialUpdate(eq(userId), eq(details));
+    verify(userService, times(1)).update(eq(userId), eq(details));
   }
 
   @Test
@@ -253,12 +251,12 @@ class UserControllerTest {
       throws Exception {
     final int userId = 1;
     String exceptionMessage = String.format("User age less than %d", 18);
-    UserPartialUpdateDTO details = new UserPartialUpdateDTO(null, null, null, null, null, null);
+    var details = new UserDTO(null, null, null, null, null, null);
     String content = objectMapper.writeValueAsString(details);
 
     doThrow(new InvalidUserAgeException(exceptionMessage))
         .when(userService)
-        .partialUpdate(eq(userId), eq(details));
+        .update(eq(userId), eq(details));
 
     mockMvc
         .perform(patch("/users/{id}", userId).contentType(APPLICATION_JSON).content(content))
@@ -270,7 +268,7 @@ class UserControllerTest {
             jsonPath("$.errorMessage").value(exceptionMessage),
             jsonPath("$.validationErrors").doesNotExist());
 
-    verify(userService, times(1)).partialUpdate(eq(userId), eq(details));
+    verify(userService, times(1)).update(eq(userId), eq(details));
   }
 
   @Test

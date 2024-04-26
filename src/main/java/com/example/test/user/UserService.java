@@ -25,7 +25,7 @@ class UserService {
     this.ageConstraint = ageConstraint;
   }
 
-  public List<UserDetailsDTO> getAllByDateBetween(LocalDate from, LocalDate to) {
+  public List<UserDTO> getAllByDateBetween(LocalDate from, LocalDate to) {
     if (from.isAfter(to)) {
       throw new InvalidDateRangeException("DateFrom can't be after to dateTo");
     }
@@ -33,16 +33,16 @@ class UserService {
   }
 
   @Transactional
-  public Integer create(NewUserDTO details) {
-    verifyAge(details.birthDate());
+  public Integer create(UserDTO details) {
+    verifyAge(details.getBirthDate());
     User newUser =
         User.builder()
-            .email(details.email())
-            .firstName(details.firstName())
-            .lastName(details.lastName())
-            .birthDate(details.birthDate())
-            .address(details.address())
-            .phoneNumber(details.phoneNumber())
+            .email(details.getEmail())
+            .firstName(details.getFirstName())
+            .lastName(details.getLastName())
+            .birthDate(details.getBirthDate())
+            .address(details.getAddress())
+            .phoneNumber(details.getPhoneNumber())
             .build();
     User user = userRepository.save(newUser);
     return user.getId();
@@ -56,40 +56,27 @@ class UserService {
   }
 
   @Transactional(isolation = Isolation.REPEATABLE_READ)
-  public void fullUpdate(Integer id, UserFullUpdate details) {
-    verifyAge(details.birthDate());
+  public void update(Integer id, UserDTO details) {
+    if (details.getBirthDate() != null) {
+      verifyAge(details.getBirthDate());
+    }
     var user = getUser(id);
-    user.setEmail(details.email());
-    user.setFirstName(details.firstName());
-    user.setLastName(details.lastName());
-    user.setBirthDate(details.birthDate());
-    user.setAddress(details.address());
-    user.setPhoneNumber(details.phoneNumber());
-    userRepository.save(user);
-  }
-
-  @Transactional(isolation = Isolation.REPEATABLE_READ)
-  public void partialUpdate(Integer id, UserPartialUpdateDTO details) {
-    var user = getUser(id);
+    user.setBirthDate(details.getBirthDate());
     // Boilerplate code can be replaced with mapstruct or reflection
-    if (details.birthDate() != null) {
-      verifyAge(details.birthDate());
-      user.setBirthDate(details.birthDate());
+    if (details.getEmail() != null && !details.getEmail().isBlank()) {
+      user.setEmail(details.getEmail());
     }
-    if (details.email() != null && !details.email().isBlank()) {
-      user.setEmail(details.email());
+    if (details.getFirstName() != null && !details.getFirstName().isBlank()) {
+      user.setFirstName(details.getFirstName());
     }
-    if (details.firstName() != null && !details.firstName().isBlank()) {
-      user.setFirstName(details.firstName());
+    if (details.getLastName() != null && !details.getLastName().isBlank()) {
+      user.setLastName(details.getLastName());
     }
-    if (details.lastName() != null && !details.lastName().isBlank()) {
-      user.setLastName(details.lastName());
+    if (details.getAddress() != null && !details.getAddress().isBlank()) {
+      user.setAddress(details.getAddress());
     }
-    if (details.address() != null && !details.address().isBlank()) {
-      user.setAddress(details.address());
-    }
-    if (details.phoneNumber() != null && !details.phoneNumber().isBlank()) {
-      user.setPhoneNumber(details.phoneNumber());
+    if (details.getPhoneNumber() != null && !details.getPhoneNumber().isBlank()) {
+      user.setPhoneNumber(details.getPhoneNumber());
     }
     userRepository.save(user);
   }

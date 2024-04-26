@@ -4,5 +4,7 @@ VALUES
 ('dummy.2@gmail.com', 'Dummy', 'Bot', '2001-01-01', 'address', 'phone'),
 ('dummy.3@gmail.com', 'Dummy', 'Bot', '2002-01-01', 'address', 'phone'),
 ('dummy.4@gmail.com', 'Dummy', 'Bot', '2003-01-01', 'address', 'phone'),
-('dummy.5@gmail.com', 'Dummy', 'Bot', '1990-01-01', 'address', 'phone'),
-('dummy.6@gmail.com', 'Dummy', 'Bot', '1970-01-01', 'address', 'phone');
+('dummy.5@gmail.com', 'Dummy', 'Bot', '2003-05-10', 'address', 'phone'),
+('dummy.6@gmail.com', 'Dummy', 'Bot', '2003-05-26', 'address', 'phone'),
+('dummy.7@gmail.com', 'Dummy', 'Bot', '1990-01-01', 'address', 'phone'),
+('dummy.8@gmail.com', 'Dummy', 'Bot', '1970-01-01', 'address', 'phone');

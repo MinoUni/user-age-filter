@@ -39,8 +39,8 @@ class UserServiceTest {
       "when create user with age less than age constraint then throw InvalidUserAgeException")
   void whenCreateUserWithAgeLessThanAgeConstraintThenThrowInvalidUserAgeException() {
     final String exceptionMessage = String.format("User age less than %d", AGE_CONSTRAINT);
-    NewUserDTO userData =
-        new NewUserDTO("test.12@gmail.com", "Mark", "Jovar", LocalDate.of(2020, 4, 20), null, null);
+    var userData =
+        new UserDTO("test.12@gmail.com", "Mark", "Jovar", LocalDate.of(2020, 4, 20), null, null);
     var errorMessage =
         assertThrows(InvalidUserAgeException.class, () -> userService.create(userData));
     assertEquals(exceptionMessage, errorMessage.getMessage());
@@ -51,8 +51,8 @@ class UserServiceTest {
   @Test
   @DisplayName("when create user with age greater than age constraint then return user id")
   void whenCreateUserWithAgeGreaterThanAgeConstraintThenReturnUserId() {
-    NewUserDTO userData =
-        new NewUserDTO("test.12@gmail.com", "Mark", "Jovar", LocalDate.of(2005, 4, 20), null, null);
+    var userData =
+        new UserDTO("test.12@gmail.com", "Mark", "Jovar", LocalDate.of(2005, 4, 20), null, null);
     User newUser = User.builder().id(1).build();
 
     when(userRepository.save(any(User.class))).thenReturn(newUser);
@@ -100,7 +100,7 @@ class UserServiceTest {
     final int userId = 1;
     User user = User.builder().id(userId).build();
     var details =
-        new UserFullUpdate(
+        new UserDTO(
             "mark.jovar@gmail.com",
             "Mark",
             "Jovar",
@@ -111,14 +111,14 @@ class UserServiceTest {
     when(userRepository.findById(eq(userId))).thenReturn(Optional.of(user));
     when(userRepository.save(eq(user))).thenReturn(user);
 
-    assertDoesNotThrow(() -> userService.fullUpdate(userId, details));
+    assertDoesNotThrow(() -> userService.update(userId, details));
 
-    assertEquals(details.email(), user.getEmail());
-    assertEquals(details.firstName(), user.getFirstName());
-    assertEquals(details.lastName(), user.getLastName());
-    assertEquals(details.birthDate(), user.getBirthDate());
-    assertEquals(details.address(), user.getAddress());
-    assertEquals(details.phoneNumber(), user.getPhoneNumber());
+    assertEquals(details.getEmail(), user.getEmail());
+    assertEquals(details.getFirstName(), user.getFirstName());
+    assertEquals(details.getLastName(), user.getLastName());
+    assertEquals(details.getBirthDate(), user.getBirthDate());
+    assertEquals(details.getAddress(), user.getAddress());
+    assertEquals(details.getPhoneNumber(), user.getPhoneNumber());
 
     verify(userRepository, times(1)).findById(eq(userId));
     verify(userRepository, times(1)).save(eq(user));
@@ -130,7 +130,7 @@ class UserServiceTest {
     final int userId = 1;
     final String exceptionMessage = String.format("User with id <%d> not found", userId);
     var details =
-        new UserFullUpdate(
+        new UserDTO(
             "mark.jovar@gmail.com",
             "Mark",
             "Jovar",
@@ -141,7 +141,7 @@ class UserServiceTest {
     when(userRepository.findById(eq(userId))).thenReturn(Optional.empty());
 
     var errorMessage =
-        assertThrows(UserNotFoundException.class, () -> userService.fullUpdate(userId, details));
+        assertThrows(UserNotFoundException.class, () -> userService.update(userId, details));
 
     assertEquals(exceptionMessage, errorMessage.getMessage());
 
@@ -157,16 +157,16 @@ class UserServiceTest {
     final String exceptionMessage = String.format("User age less than %d", AGE_CONSTRAINT);
     User user = User.builder().firstName("Dummy").lastName("Dumbster").build();
     var details =
-        new UserFullUpdate(
+        new UserDTO(
             "mark.jovar@gmail.com", "Mark", "Jovar", LocalDate.now(), "Adress", "phone number");
 
     var errorMessage =
-        assertThrows(InvalidUserAgeException.class, () -> userService.fullUpdate(userId, details));
+        assertThrows(InvalidUserAgeException.class, () -> userService.update(userId, details));
 
     assertEquals(exceptionMessage, errorMessage.getMessage());
 
-    assertNotEquals(user.getFirstName(), details.firstName());
-    assertNotEquals(user.getLastName(), details.lastName());
+    assertNotEquals(user.getFirstName(), details.getFirstName());
+    assertNotEquals(user.getLastName(), details.getLastName());
 
     verify(userRepository, never()).findById(eq(userId));
     verify(userRepository, never()).save(any(User.class));
@@ -179,21 +179,17 @@ class UserServiceTest {
     final int userId = 1;
     final String exceptionMessage = String.format("User age less than %d", AGE_CONSTRAINT);
     User user = User.builder().firstName("Dummy").lastName("Dumbster").build();
-    UserPartialUpdateDTO details =
-        new UserPartialUpdateDTO(null, "Mark", "Jovar", LocalDate.now(), null, null);
-
-    when(userRepository.findById(eq(userId))).thenReturn(Optional.of(user));
+    var details = new UserDTO(null, "Mark", "Jovar", LocalDate.now(), null, null);
 
     var errorMessage =
-        assertThrows(
-            InvalidUserAgeException.class, () -> userService.partialUpdate(userId, details));
+        assertThrows(InvalidUserAgeException.class, () -> userService.update(userId, details));
 
     assertEquals(exceptionMessage, errorMessage.getMessage());
 
-    assertNotEquals(user.getFirstName(), details.firstName());
-    assertNotEquals(user.getLastName(), details.lastName());
+    assertNotEquals(user.getFirstName(), details.getFirstName());
+    assertNotEquals(user.getLastName(), details.getLastName());
 
-    verify(userRepository, times(1)).findById(eq(userId));
+    verify(userRepository, never()).findById(eq(userId));
     verify(userRepository, never()).save(any(User.class));
   }
 
@@ -202,13 +198,12 @@ class UserServiceTest {
   void whenPartialUpdateNotExistingUserThenThrowUserNotFoundException() {
     final int userId = 1;
     final String exceptionMessage = String.format("User with id <%d> not found", userId);
-    UserPartialUpdateDTO details =
-        new UserPartialUpdateDTO(null, "Mark", "Jovar", LocalDate.of(1950, 4, 10), null, null);
+    var details = new UserDTO(null, "Mark", "Jovar", LocalDate.of(1950, 4, 10), null, null);
 
     when(userRepository.findById(eq(userId))).thenReturn(Optional.empty());
 
     var errorMessage =
-        assertThrows(UserNotFoundException.class, () -> userService.partialUpdate(userId, details));
+        assertThrows(UserNotFoundException.class, () -> userService.update(userId, details));
 
     assertEquals(exceptionMessage, errorMessage.getMessage());
 
@@ -229,21 +224,20 @@ class UserServiceTest {
             .address("address")
             .phoneNumber("phone")
             .build();
-    UserPartialUpdateDTO details =
-        new UserPartialUpdateDTO("  ", "Mark", "Jovar", LocalDate.of(1960, 5, 15), "", null);
+    var details = new UserDTO("  ", "Mark", "Jovar", LocalDate.of(1960, 5, 15), "", null);
 
     when(userRepository.findById(eq(userId))).thenReturn(Optional.of(user));
     when(userRepository.save(eq(user))).thenReturn(user);
 
-    assertDoesNotThrow(() -> userService.partialUpdate(userId, details));
+    assertDoesNotThrow(() -> userService.update(userId, details));
 
-    assertEquals(details.firstName(), user.getFirstName());
-    assertEquals(details.lastName(), user.getLastName());
-    assertEquals(details.birthDate(), user.getBirthDate());
+    assertEquals(details.getFirstName(), user.getFirstName());
+    assertEquals(details.getLastName(), user.getLastName());
+    assertEquals(details.getBirthDate(), user.getBirthDate());
 
-    assertNotEquals(details.email(), user.getEmail());
-    assertNotEquals(details.address(), user.getAddress());
-    assertNotEquals(details.phoneNumber(), user.getPhoneNumber());
+    assertNotEquals(details.getEmail(), user.getEmail());
+    assertNotEquals(details.getAddress(), user.getAddress());
+    assertNotEquals(details.getPhoneNumber(), user.getPhoneNumber());
 
     verify(userRepository, times(1)).findById(eq(userId));
     verify(userRepository, times(1)).save(eq(user));
@@ -257,8 +251,7 @@ class UserServiceTest {
 
     when(userRepository.findAllByBirthDateBetween(eq(from), eq(to))).thenReturn(List.of());
 
-    List<UserDetailsDTO> users =
-        assertDoesNotThrow(() -> userService.getAllByDateBetween(from, to));
+    var users = assertDoesNotThrow(() -> userService.getAllByDateBetween(from, to));
 
     assertNotNull(users);
 

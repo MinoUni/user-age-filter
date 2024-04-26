@@ -6,7 +6,6 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.PastOrPresent;
 import java.time.LocalDate;
 import java.util.List;
@@ -35,7 +34,7 @@ class UserController {
   private final UserService userService;
 
   @GetMapping(produces = APPLICATION_JSON_VALUE)
-  public ResponseEntity<List<UserDetailsDTO>> getAllByDateBetween(
+  public ResponseEntity<List<UserDTO>> getAllByDateBetween(
       @PastOrPresent(message = "DateFrom can't be in future")
           @DateTimeFormat(pattern = "dd-MM-yyyy")
           @RequestParam("from")
@@ -51,7 +50,7 @@ class UserController {
 
   @PostMapping(consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
   public ResponseEntity<String> add(
-      HttpServletRequest request, @Valid @RequestBody NewUserDTO details) {
+      HttpServletRequest request, @Validated(UserDTO.Create.class) @RequestBody UserDTO details) {
     Integer userId = userService.create(details);
     return ResponseEntity.status(CREATED)
         .header(HttpHeaders.LOCATION, String.format("%s/%d", request.getRequestURI(), userId))
@@ -61,8 +60,8 @@ class UserController {
 
   @PutMapping(value = "/{id}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
   public ResponseEntity<String> fullUpdate(
-      @PathVariable Integer id, @Valid @RequestBody UserFullUpdate details) {
-    userService.fullUpdate(id, details);
+      @PathVariable Integer id, @Validated(UserDTO.FullUpdate.class) @RequestBody UserDTO details) {
+    userService.update(id, details);
     return ResponseEntity.status(OK).contentType(APPLICATION_JSON).build();
   }
 
@@ -71,8 +70,8 @@ class UserController {
       consumes = APPLICATION_JSON_VALUE,
       produces = APPLICATION_JSON_VALUE)
   public ResponseEntity<String> partialUpdate(
-      @PathVariable Integer id, @RequestBody UserPartialUpdateDTO details) {
-    userService.partialUpdate(id, details);
+      @PathVariable Integer id, @Validated(UserDTO.PartialUpdate.class) @RequestBody UserDTO details) {
+    userService.update(id, details);
     return ResponseEntity.status(OK).contentType(APPLICATION_JSON).build();
   }
 
