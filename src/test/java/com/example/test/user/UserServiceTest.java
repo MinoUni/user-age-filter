@@ -61,8 +61,8 @@ class UserServiceTest {
   }
 
   @Test
-  @DisplayName("when delete non-existing user then return 404 status")
-  void whenDeleteNonExistingUserThenResponseWithStatusCode404() {
+  @DisplayName("when delete non-existing user then throw UserNotFoundException")
+  void whenDeleteNonExistingUserThenThrowUserNotFoundException() {
     final int userId = 1;
     final String exceptionMessage = String.format("User with id <%d> not found", userId);
 
@@ -76,8 +76,8 @@ class UserServiceTest {
   }
 
   @Test
-  @DisplayName("when delete existing user then return 200 status")
-  void whenDeleteExistingUserThenResponseWithStatusCode200() {
+  @DisplayName("when delete existing user then delete successfully")
+  void whenDeleteExistingUserThenDeleteSuccessfully() {
     final int userId = 1;
     User user = User.builder().id(userId).build();
 
@@ -174,8 +174,8 @@ class UserServiceTest {
   }
 
   @Test
-  @DisplayName("when partial update user with age less than age constraint then return 400 status")
-  void whenPartialUpdateUserWithAgeLessThanAgeConstraintThenResponseWithStatusCode400() {
+  @DisplayName("when partial update user with age less than age constraint then throw InvalidUserAgeException")
+  void whenPartialUpdateUserWithAgeLessThanAgeConstraintThenThrowInvalidUserAgeException() {
     final int userId = 1;
     final String exceptionMessage = String.format("User age less than %d", AGE_CONSTRAINT);
     User user = User.builder().firstName("Dummy").lastName("Dumbster").build();
@@ -199,8 +199,8 @@ class UserServiceTest {
   }
 
   @Test
-  @DisplayName("when partial update non-existing user then return 404 status")
-  void whenPartialUpdateNotExistingUserThenResponseWithStatusCode404() {
+  @DisplayName("when partial update non-existing user then throw UserNotFoundException")
+  void whenPartialUpdateNotExistingUserThenThrowUserNotFoundException() {
     final int userId = 1;
     final String exceptionMessage = String.format("User with id <%d> not found", userId);
     User user = User.builder().firstName("Dummy").lastName("Dumbster").build();
@@ -223,8 +223,8 @@ class UserServiceTest {
   }
 
   @Test
-  @DisplayName("when partial update user then return 200 status")
-  void whenPartialUpdateUserThenResponseWithStatusCode200() {
+  @DisplayName("when partial update user then update successfully")
+  void whenPartialUpdateUserThenUpdateSuccessfully() {
     final int userId = 1;
     User user =
         User.builder()
